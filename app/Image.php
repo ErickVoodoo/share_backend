@@ -6,7 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class Image extends Model
 {
-    public $timestamps = false;
+    protected $keyType = 'char';
+    // public $timestamps = false;
     public $incrementing = false;
 
     protected $table = 'images';

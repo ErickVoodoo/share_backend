@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Location extends Model
 {
+    protected $keyType = 'char';
     public $timestamps = false;
     public $incrementing = false;
 

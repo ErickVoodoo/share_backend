@@ -9,7 +9,7 @@ class RoleUser extends Model
   public $timestamps = false;
   public $incrementing = false;
   protected $primaryKey = null;
-
+  protected $keyType = 'char';
   protected $table = 'role_user';
   protected $fillable = ['user_id', 'role_id'];
 

@@ -11,13 +11,15 @@ use Response;
 
 class UsersController extends App_Controller
 {
-    /**
-     * Display a listing of the resource.
-     *
-     * @return \Illuminate\Http\Response
-     */
+
+    // CHECKED ALL ROUTES
+
     public function index(Request $request) {
       $users = new User;
+
+      if (!JWTAuth::getToken() || (JWTAuth::getToken() && JWTAuth::parseToken()->authenticate()->login !== 'admin')) {
+        $users = $users::select('id', 'country_id', 'name', 'description', 'logo', 'created_at');
+      }
 
       $where = array(
         'country_id' => $request->input('country_id'),
@@ -57,45 +59,30 @@ class UsersController extends App_Controller
       ], 200, [], JSON_UNESCAPED_UNICODE);
     }
 
-    /**
-     * Store a newly created resource in storage.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\Response
-     */
-    public function store(Request $request)
-    {
-        //
-    }
-
-    /**
-     * Display the specified resource.
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
     public function show($id) {
-        $user = User::where('id', $id)
+        $user = new User;
+
+        if (!JWTAuth::getToken() || (JWTAuth::getToken() && JWTAuth::parseToken()->authenticate()->login !== 'admin')) {
+          $user = $user::select('id', 'country_id', 'name', 'description', 'logo', 'created_at');
+        }
+
+        $user = $user->where('id', $id)
           ->with(
             'products.tags',
             'products.links',
             'products.images',
             'products.discount',
-            'products.location'
-          );
+            'products.location',
+            'products.category'
+          )->get();
 
         return Response::json([
-          'response' => ['user' => $user->get()],
+          'response' => [
+            'user' => $user,
+          ],
         ], 200, [], JSON_UNESCAPED_UNICODE);
     }
 
-    /**
-     * Update the specified resource in storage.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
     public function update(Request $request, $id) {
         $user = User::find($id);
 
@@ -107,30 +94,31 @@ class UsersController extends App_Controller
           ], 403, [], JSON_UNESCAPED_UNICODE);
         }
 
-        if (!$request->input('password') ||
-          $request->input('password') !== $request->input('password_confirmation')) {
-          return Response::json([
-            'error' => [
-              'fields' => [
-                'passwort' => 'The new password does not match the confirm password',
-              ]
-            ],
-          ], 422, [], JSON_UNESCAPED_UNICODE);
+        if ($request->input('password')) {
+          $this->validate($request, [
+            'password' => 'min:8|max:255|regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$/',
+            'password_confirmation' => 'min:8|max:255|regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$/',
+          ]);
+
+          if ($request->input('password') !== $request->input('password_confirmation')) {
+            return Response::json([
+              'error' => [
+                'fields' => [
+                  'password' => 'The new password does not match the confirm password',
+                ]
+              ],
+            ], 422, [], JSON_UNESCAPED_UNICODE);
+          }
         }
 
         $this->validate($request, [
           'login' => 'max:255|min:8',
-          'email' => 'required|max:255|email|unique:users',
-          'password' => 'min:8|max:255|regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$/',
-          'password_confirmation' => 'min:8|max:255|regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$/',
-          'name' => 'required|min:8|max:255',
-          'country_id' => 'required|max:8|numeric',
-          'plan_id' => 'max:8|numeric',
+          'name' => 'required|min:4|max:255',
           'description' => 'max:255',
           'logo' => 'max:255',
         ]);
 
-        if ($request->input('country_id') || !Country::find($request->input('country_id'))) {
+        if (!$request->input('country_id') || !Country::find($request->input('country_id'))) {
           return Response::json([
             'error' => [
               'message' => 'The country with id ' . $request->input('country_id') . ' not found',
@@ -146,19 +134,15 @@ class UsersController extends App_Controller
           ], 404, [], JSON_UNESCAPED_UNICODE);
         }
 
-        $user->fill($request->all())->save();
+        $user->fill(array_filter($request->only('country_id', 'plan_id', 'login', 'name', 'description', 'logo'), 'strlen'))->save();
 
         return Response::json([
-          'response' => ['user' => $user],
+          'response' => [
+            'user' => $user
+          ],
         ], 200, [], JSON_UNESCAPED_UNICODE);
     }
 
-    /**
-     * Remove the specified resource from storage.
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
     public function destroy($id) {
         $user = User::find($id);
 

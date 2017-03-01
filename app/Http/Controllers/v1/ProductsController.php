@@ -8,7 +8,9 @@ use App\Discount;
 use App\Link;
 use App\User;
 use App\Product;
+use App\Deliver;
 use App\Tag;
+use App\Category;
 use App\Image;
 use App\ProductTag;
 use App\Location;
@@ -19,25 +21,37 @@ use JWTAuth;
 
 class ProductsController extends App_Controller
 {
+
+  // CHECKED ALL ROUTES
+
   public function index(Request $request) {
     $this->validate($request, [
       'offset' => 'max:128|numeric',
       'size' => 'max:128|numeric',
-      'user_id' => 'max:128|numeric',
-      'category_id' => 'max:128|numeric',
-      'discount_id' => 'max:128|numeric',
+      'user_id' => 'max:128',
+      'category_id' => 'max:128',
+      'discount_id' => 'max:128',
       'title' => 'max:128',
-      'delivers_id' => 'max:128|numeric',
+      'deliver_id' => 'max:128',
+      'tags' => 'max:256',
+      'country_id' => 'max: 128',
+      'city' => 'max:64',
+      'street' => 'max: 128',
     ]);
 
     $where = array(
       'offset' => $request->input('offset'),
       'size' => $request->input('size'),
+
       'user_id' => $request->input('user_id'),
       'category_id' => $request->input('category_id'),
       'discount_id' => $request->input('discount_id'),
       'title' => $request->input('title'),
-      'delivers_id' => $request->input('delivers_id'),
+      'deliver_id' => $request->input('deliver_id'),
+      'tags' => $request->input('tags'),
+      'country_id' => $request->input('country'),
+      'city' => $request->input('city'),
+      'street' => $request->input('street'),
     );
 
     $products = new Product;
@@ -58,8 +72,30 @@ class ProductsController extends App_Controller
       $products = $products->where('title', 'like', '%' .$where['title'] . '%' );
     }
 
-    if ($where['delivers_id']) {
-      $products = $products->where('delivers_id', $where['delivers_id']);
+    if ($where['deliver_id']) {
+      $products = $products->where('deliver_id', $where['deliver_id']);
+    }
+
+    if ($where['tags']) {
+      $products = $products->whereHas('tags', function($query) use ($request) {
+        $query->whereIn('name', $request->input('tags'));
+      });
+    }
+
+    if ($where['country_id']) {
+      $products = $products->whereHas('user', function($query) use ($request) {
+        $query->whereIn('country_id', $request->input('country_id'));
+      });
+    }
+
+    if ($where['city'] || $where['street']) {
+      $products = $products->whereHas('location', function($query) use ($request) {
+        $query->where('city', $request->input('city'));
+
+        if ($request->input('street')) {
+          $query->where('street', 'like', '%' . $request->input('street') . '%' );
+        }
+      });
     }
 
     $total = $products->get()->count();
@@ -96,11 +132,11 @@ class ProductsController extends App_Controller
 
   public function store(Request $request) {
     $this->validate($request, [
-      'category_id' => 'required|max:255|numeric',
-      'discount_id' => 'max:255|numeric',
+      'category_id' => 'required|max:255',
+      'discount_id' => 'max:255',
       'title' => 'required|max:128',
       'description' => 'max:255',
-      'delivers_id' => 'max:255',
+      'deliver_id' => 'max:255',
       'location_id' => 'required|max:255',
       'price' => 'min:1|max:64',
       'links' => 'required',
@@ -113,6 +149,16 @@ class ProductsController extends App_Controller
         'error' => [
           'fields' => [
             'location' => 'Can\'t find the location',
+          ],
+        ],
+      ], 422, [], JSON_UNESCAPED_UNICODE);
+    }
+
+    if (!$request->input('category_id') || !Category::find($request->input('category_id'))) {
+      return Response::json([
+        'error' => [
+          'fields' => [
+            'category' => 'Can\'t find the category',
           ],
         ],
       ], 422, [], JSON_UNESCAPED_UNICODE);
@@ -138,22 +184,39 @@ class ProductsController extends App_Controller
       ], 422, [], JSON_UNESCAPED_UNICODE);
     }
 
-    $discount = Discount::create([
-      'id' => Uuid::uuid4()->toString(),
-      'value' => $request->input('discount_value'),
-      'promo' => $request->input('discount_promo'),
-    ]);
+    $deliver = (object) ['id' => null];
+    if ($request->input('deliver_id') && Deliver::find($request->input('deliver_id'))) {
+      $deliver = Deliver::find($request->input('deliver_id'));
+    }
 
-    $product = Product::create([
+    $discount = (object) ['id' => null];
+    if ($request->input('discount_value') && $request->input('discount_promo')) {
+      $discount = Discount::create([
+        'id' => Uuid::uuid4()->toString(),
+        'value' => $request->input('discount_value'),
+        'promo' => $request->input('discount_promo'),
+      ]);
+    }
+
+    $fill = [
+      'id' => Uuid::uuid4()->toString(),
       'user_id' => JWTAuth::parseToken()->authenticate()->id,
       'category_id' => $request->input('category_id'),
       'title' => $request->input('title'),
       'description' => $request->input('description'),
       'price' => $request->input('price'),
-      'delivers_id' => $request->input('delivers_id'),
-      'discount_id' => $discount->id,
       'location_id' => $request->input('location_id'),
-    ]);
+    ];
+
+    if ($discount->id) {
+      $fill['discount_id'] = $discount->id;
+    }
+
+    if ($deliver->id) {
+      $fill['deliver_id'] = $deliver->id;
+    }
+
+    $product = Product::create($fill);
 
     $tags = $request->input('tags');
 
@@ -162,6 +225,7 @@ class ProductsController extends App_Controller
         $current_tag = Tag::where('name', $value)->first();
         if (!$current_tag) {
           $current_tag = Tag::create([
+            'id' => Uuid::uuid4()->toString(),
             'name' => $value,
           ]);
         }
@@ -174,7 +238,7 @@ class ProductsController extends App_Controller
     }
 
     foreach ($links as $value) {
-      $current_link = new Link(['url' => $value]);
+      $current_link = new Link(['id' => Uuid::uuid4()->toString(), 'url' => $value]);
       $product->links()->save($current_link);
     }
 
@@ -200,7 +264,9 @@ class ProductsController extends App_Controller
           )->find($product->id);
 
     return Response::json([
-      'response' => ['product' => $new_product],
+      'response' => [
+        'product' => $new_product
+      ],
     ], 200, [], JSON_UNESCAPED_UNICODE);
   }
 
@@ -230,11 +296,11 @@ class ProductsController extends App_Controller
 
   public function update(Request $request, $id) {
     $this->validate($request, [
-      'category_id' => 'required|max:255|numeric',
-      'discount_id' => 'max:255|numeric',
+      'category_id' => 'required|max:255',
+      'discount_id' => 'max:255',
       'title' => 'required|max:128',
       'description' => 'max:255',
-      'delivers_id' => 'max:255',
+      'deliver_id' => 'max:255',
       'location_id' => 'required|max:255',
       'price' => 'min:1|max:64',
       'links' => 'required',
@@ -262,15 +328,46 @@ class ProductsController extends App_Controller
       ], 422, [], JSON_UNESCAPED_UNICODE);
     }
 
-    $product->fill([
+    $discount = Discount::find($product->discount_id);
+    $discount_id = null;
+    if ($discount && $discount->id) {
+      $discount_id = $discount->id;
+    }
+
+    if (!$request->input('discount_value') || !$request->input('discount_promo')) {
+      $discount = (object) ['id' => null];
+    } else {
+      $new_discount = [
+        'id' => Uuid::uuid4()->toString(),
+        'value' => $request->input('discount_value'),
+        'promo' => $request->input('discount_promo'),
+      ];
+
+      if (!$product->discount_id) {
+        $discount = Discount::create($new_discount);
+      } else {
+        $discount->fill(['value' => $new_discount['value'], 'promo' => $new_discount['promo']])->save();
+      }
+    }
+
+    $fill = [
       'user_id' => JWTAuth::parseToken()->authenticate()->id,
       'category_id' => $request->input('category_id'),
       'title' => $request->input('title'),
       'price' => $request->input('price'),
       'description' => $request->input('description'),
-      'delivers_id' => $request->input('delivers_id'),
       'location_id' => $request->input('location_id')
-    ]);
+    ];
+
+    $deliver = Deliver::find($request->input('deliver_id'));
+    if (!$deliver || !$request->input('deliver_id')) {
+      $deliver = (object) ['id' => null];
+    }
+
+    $fill['deliver_id'] = $deliver->id;
+    $fill['discount_id'] = $discount->id;
+
+    $product->fill($fill);
 
     $tags = $request->input('tags');
 
@@ -280,6 +377,7 @@ class ProductsController extends App_Controller
         $current_tag = Tag::where('name', $value)->first();
         if (!$current_tag) {
           $current_tag = Tag::create([
+            'id' => Uuid::uuid4()->toString(),
             'name' => $value,
           ]);
         }
@@ -296,7 +394,7 @@ class ProductsController extends App_Controller
     if ($links) {
       Link::where('product_id', $product->id)->delete();
       foreach ($links as $value) {
-        $current_link = new Link(['url' => $value]);
+        $current_link = new Link(['id' => Uuid::uuid4()->toString(), 'url' => $value]);
         $product->links()->save($current_link);
       }
     } else {
@@ -309,24 +407,14 @@ class ProductsController extends App_Controller
       ], 422, [], JSON_UNESCAPED_UNICODE);
     }
 
-    $discount = Discount::find($product->discount_id);
-    $new_discount = [
-      'value' => $request->input('discount_value'),
-      'promo' => $request->input('discount_promo'),
-    ];
-
-    if ($discount->promo !== $new_discount['promo'] ||
-        $discount->vlaue !== $new_discount['value']) {
-        $discount->fill($new_discount)->save();
-    }
-
     $images = $request->input('images');
 
+    $product_images = Image::where('product_id', $product->id)->get();
+    foreach ($product_images as $image) {
+      $image->fill(array('product_id' => null ))->save();
+    }
+
     if ($images) {
-      $product_images = Image::where('product_id', $product->id)->get();
-      foreach ($product_images as $image) {
-        $image->fill(array('product_id' => null ))->save();
-      }
       foreach ($images as $value) {
         $image = Image::where('id', $value)->first();
         if ($image) {
@@ -336,6 +424,11 @@ class ProductsController extends App_Controller
     }
 
     $product->save();
+
+    if ($discount_id && !$request->input('discount_promo') && !$request->input('discount_value')) {
+      Discount::find($discount_id)->delete();
+    }
+
     $new_product = Product::with(
           'user',
           'category',
@@ -347,7 +440,9 @@ class ProductsController extends App_Controller
           )->find($product->id);
 
     return Response::json([
-      'response' => ['product' => $new_product],
+      'response' => [
+        'product' => $new_product
+      ],
     ], 200, [], JSON_UNESCAPED_UNICODE);
   }
 
@@ -363,11 +458,12 @@ class ProductsController extends App_Controller
       ], 404, [], JSON_UNESCAPED_UNICODE);
     }
 
+    $product->delete();
     $product->product_tag()->delete();
     $product->images()->delete();
     $product->links()->delete();
     $product->discount()->delete();
-    $product->delete();
+
 
     return Response::json([
       'response' => ['id' => $product->id],

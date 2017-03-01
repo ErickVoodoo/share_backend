@@ -355,7 +355,7 @@ CREATE TABLE products (
     discount_id integer,
     title character varying(128) DEFAULT NULL::character varying,
     description character varying(256) DEFAULT NULL::character varying,
-    delivers_id integer,
+    deliver_id integer,
     created_at timestamp without time zone,
     updated_at timestamp without time zone
 );
@@ -834,7 +834,7 @@ CREATE TABLE products (
     category_id integer,
     title character varying(128) DEFAULT NULL::character varying,
     description character varying(256) DEFAULT NULL::character varying,
-    delivers_id integer,
+    deliver_id integer,
     created_at timestamp without time zone,
     updated_at timestamp without time zone,
     discount_id character varying(255),

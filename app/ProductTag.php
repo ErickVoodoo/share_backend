@@ -8,7 +8,7 @@ class ProductTag extends Model
 {
   public $timestamps = false;
   public $incrementing = false;
-
+  protected $keyType = 'char';
   protected $table = 'product_tags';
   protected $primaryKey = null;
   protected $fillable = ['product_id', 'tag_id'];

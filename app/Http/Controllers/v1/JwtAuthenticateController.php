@@ -6,21 +6,30 @@ use Illuminate\Http\Request;
 use App\Role;
 use App\Permission;
 use App\PasswordReset;
+use App\RoleUser;
 use App\User;
+use App\Plan;
 use Response;
 use JWTAuth;
 use Auth;
+use Hash;
 use Illuminate\Mail\Message;
 use Illuminate\Support\Facades\Password;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use Ramsey\Uuid\Uuid;
 
 class JwtAuthenticateController extends App_Controller
 {
+
+  // CHECKED ALL ROUTES
+
   public function __construct()
   {
      $this->middleware('jwt.auth', ['except' => ['login', 'registration', 'reset', 'forgot']]);
   }
-// LOGIN USER
+
+  // LOGIN USER
+
   public function login(Request $request) {
       $credentials = $request->only('email', 'password');
 
@@ -49,20 +58,22 @@ class JwtAuthenticateController extends App_Controller
         ],
       ], 200, [], JSON_UNESCAPED_UNICODE);
   }
-// REGISTER USER
+
+  // REGISTER USER
+
   public function registration(Request $request) {
     $this->validate($request, [
       'login' => 'max:255|min:8',
       'email' => 'required|max:255|email',
       'password' => 'min:8|max:255|regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$/',
       'password_confirmation' => 'min:8|max:255|regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$/',
-      'country_id' => 'required|max:8|numeric',
+      'country_id' => 'required',
       'name' => 'required|min:8|max:255',
     ]);
 
     $login = $request->input('login');
     $email = $request->input('email');
-    $password = $request->input('wpassword');
+    $password = $request->input('password');
     $country_id = $request->input('country');
     $name = $request->input('name');
 
@@ -81,23 +92,37 @@ class JwtAuthenticateController extends App_Controller
       return Response::json([
         'error' => [
           'fields' => [
-            'email' => 'The user with this email or login do not exist',
+            'email' => 'The user with this email or login exist',
           ],
         ],
       ], 422, [], JSON_UNESCAPED_UNICODE);
     }
 
     try {
-         $user = User::create([
-             'login' => $login,
-             'email' => $email,
-             'password' => bcrypt($password),
-             'country_id' => $country_id,
-             'name' => $name,
-             'plan_id' => 0,
-         ]);
+       $user = User::create([
+         'id' => Uuid::uuid4()->toString(),
+         'login' => $login,
+         'email' => $email,
+         'password' => bcrypt($password),
+         'country_id' => $country_id,
+         'name' => $name,
+         'plan_id' => Plan::where('cost', 0)->first()->id,
+       ]);
      } catch (Exception $e) {
-         return Response::json(['error' => 'User already exists.'], HttpResponse::HTTP_CONFLICT);
+       return Response::json([
+         'error' => [
+           'message' =>  'User already exists.',
+         ],
+       ], 422, [], JSON_UNESCAPED_UNICODE);
+     }
+
+     $role = Role::where('name', 'publisher')->first();
+
+     if ($role->id && $user->id) {
+       RoleUser::create([
+         'user_id' => $user->id,
+         'role_id' => $role->id,
+       ]);
      }
 
      $token = JWTAuth::fromUser($user);
@@ -108,7 +133,9 @@ class JwtAuthenticateController extends App_Controller
        ],
      ], 200, [], JSON_UNESCAPED_UNICODE);
   }
-// RESET PASSWORD
+
+  // RESET PASSWORD
+
   public function reset(Request $request) {
     $email = PasswordReset::where('token', $request->input('token'))->first();
 
@@ -167,7 +194,9 @@ class JwtAuthenticateController extends App_Controller
         ], 500, [], JSON_UNESCAPED_UNICODE);
       }
   }
-// FORGOT PASSWORD
+
+  // FORGOT PASSWORD
+
   public function forgot(Request $request) {
     $this->validate($request, [
       'email' => 'required|email',
@@ -177,7 +206,7 @@ class JwtAuthenticateController extends App_Controller
       return Response::json([
         'error' => [
           'fields' => [
-            'email' => 'The user with this email or login do not exist',
+            'email' => 'The user with this email do not exist',
           ],
         ],
       ], 422, [], JSON_UNESCAPED_UNICODE);
@@ -216,6 +245,7 @@ class JwtAuthenticateController extends App_Controller
     }
 
     $role = Role::create(array(
+      'id' => Uuid::uuid4()->toString(),
       'name' => $name,
     ));
 
@@ -239,6 +269,7 @@ class JwtAuthenticateController extends App_Controller
     }
 
     $permission = Permission::create([
+      'id' => Uuid::uuid4()->toString(),
       'name' => $name,
     ]);
 

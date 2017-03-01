@@ -4,7 +4,7 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Database\Migrations\Migration;
 
-class ChangeLinksUrl extends Migration
+class AddTimestampImage extends Migration
 {
     /**
      * Run the migrations.
@@ -13,9 +13,10 @@ class ChangeLinksUrl extends Migration
      */
     public function up()
     {
-      Schema::table('links', function($table) {
-          $table->dropUnique('links_url_unique');
-      });
+        Schema::table('images', function($table) {
+          $table->timestamp('created_at');
+          $table->timestamp('updated_at');
+        });
     }
 
     /**
@@ -25,8 +26,9 @@ class ChangeLinksUrl extends Migration
      */
     public function down()
     {
-      Schema::table('links', function($table) {
-          $table->unique('url');
-      });
+        Schema::table('images', function($table) {
+          $table->dropColumn('created_at');
+          $table->dropColumn('updated_at');
+        });
     }
 }

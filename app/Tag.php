@@ -11,6 +11,7 @@ class Tag extends Model
   protected $table = 'tags';
   protected $fillable = ['id', 'name'];
   protected $hidden = ['pivot'];
+  protected $keyType = 'char';
 
   public function product_tag() {
     return $this->belongsTo('App\ProductTag', 'tag_id');

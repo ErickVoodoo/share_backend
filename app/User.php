@@ -11,8 +11,9 @@ class User extends Authenticatable
     use Notifiable, EntrustUserTrait;
 
     protected $table_name = 'users';
-    protected $fillable = ['login', 'email', 'api_token', 'password', 'country_id', 'plan_id', 'name', 'description', 'logo'];
-    protected $hidden = ['password', 'api_token'];
+    protected $fillable = ['id', 'login', 'email', 'api_token', 'password', 'country_id', 'plan_id', 'name', 'description', 'logo'];
+    protected $hidden = ['password'];
+    protected $keyType = 'char';
 
     public function products() {
       return $this->hasMany('App\Product');

@@ -12,6 +12,9 @@ use Intervention\Image\ImageManagerStatic as ImageManager;
 
 class ImagesController extends App_Controller
 {
+
+    // CHECKED ALL ROUTES
+
     public function store(Request $request) {
         $this->validate($request, [
           'image' => 'required|mimes:png,jpeg',

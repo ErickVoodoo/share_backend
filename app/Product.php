@@ -6,8 +6,9 @@ use Illuminate\Database\Eloquent\Model;
 
 class Product extends Model
 {
+  protected $keyType = 'char';
   protected $table = 'products';
-  protected $fillable = ['id', 'user_id', 'category_id', 'price', 'location_id', 'discount_id', 'title', 'description', 'delivers_id', 'images'];
+  protected $fillable = ['id', 'user_id', 'category_id', 'price', 'location_id', 'discount_id', 'title', 'description', 'deliver_id', 'images'];
   protected $hidden = ['location_id', 'category_id', 'user_id', 'discount_id'];
 
   public function product_tag() {

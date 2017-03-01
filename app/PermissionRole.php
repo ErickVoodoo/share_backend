@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class PermissionRole extends Model
 {
+    protected $keyType = 'char';
     public $timestamps = false;
     public $incrementing = false;
     protected $primaryKey = null;

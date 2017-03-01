@@ -4,14 +4,14 @@ namespace App\Http\Controllers\v1;
 
 use Illuminate\Http\Request;
 use App\Discount;
+use Ramsey\Uuid\Uuid;
+use Response;
 
 class DiscountsController extends App_Controller
 {
-  /**
-   * Display a listing of the resource.
-   *
-   * @return \Illuminate\Http\Response
-   */
+
+  // CHECKED ALL ROUTES
+
   public function index()
   {
     $discounts = Discount::get();
@@ -23,23 +23,18 @@ class DiscountsController extends App_Controller
     ], 200, [], JSON_UNESCAPED_UNICODE);
   }
 
-  /**
-   * Store a newly created resource in storage.
-   *
-   * @param  \Illuminate\Http\Request  $request
-   * @return \Illuminate\Http\Response
-   */
-  public function store(Request $request)
-  {
-      //
+  public function store(Request $request) {
+    $discount = Discount::create([
+      'id' => Uuid::uuid4()->toString(),
+      'value' => $request->input('value'),
+      'promo' => $request->input('promo'),
+    ]);
+
+    return Response::json([
+      'response' => ['discount' => $discount],
+    ], 200, [], JSON_UNESCAPED_UNICODE);
   }
 
-  /**
-   * Display the specified resource.
-   *
-   * @param  \App\Discount  #discount
-   * @return \Illuminate\Http\Response
-   */
   public function show($id)
   {
     $discount = Discount::find($id);
@@ -49,28 +44,5 @@ class DiscountsController extends App_Controller
         'discount' => $discount,
       ],
     ], 200, [], JSON_UNESCAPED_UNICODE);
-  }
-
-  /**
-   * Update the specified resource in storage.
-   *
-   * @param  \Illuminate\Http\Request  $request
-   * @param  \App\Discount  $discount
-   * @return \Illuminate\Http\Response
-   */
-  public function update(Request $request, $id)
-  {
-      //
-  }
-
-  /**
-   * Remove the specified resource from storage.
-   *
-   * @param  \App\Discount $discount
-   * @return \Illuminate\Http\Response
-   */
-  public function destroy($id)
-  {
-      //
   }
 }

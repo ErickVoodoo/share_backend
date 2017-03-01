@@ -39,17 +39,19 @@ Route::group(['prefix' => 'v1'], function() {
 	Route::get('users', 'v1\UsersController@index');
 	Route::get('users/{id}', 'v1\UsersController@show');
 
+	Route::get('locations', 'v1\LocationsController@index');
+	Route::get('locations/{id}', 'v1\LocationsController@show');
+
 	Route::post('login', 'v1\JwtAuthenticateController@login');
 	Route::post('registration', 'v1\JwtAuthenticateController@registration');
 	Route::post('reset', 'v1\JwtAuthenticateController@reset');
 	Route::post('forgot', 'v1\JwtAuthenticateController@forgot');
-	// Route::get('locations', 'v1\LocationsController@')
-	Route::post('images', 'v1\ImagesController@store');
 });
 
-Route::group(['prefix' => 'v1', 'middleware' => []], function() {
+Route::group(['prefix' => 'v1', 'middleware' => ['jwt.auth']], function() {
 	// надо токен для каких то действий
-	// Route::post('images', 'v1\ImagesController@store');
+	Route::post('images', 'v1\ImagesController@store');
+	Route::post('locations', 'v1\LocationsController@store');
 });
 
 Route::group(['prefix' => 'v1', 'middleware' => ['jwt.auth', 'ability:,delete-products']], function() {
@@ -86,4 +88,11 @@ Route::group(['prefix' => 'v1', 'middleware' => 'ability:admin,'], function() {
 
 	Route::post('permissions', 'v1\JwtAuthenticateController@createPermission');
 	Route::post('attach-permission', 'v1\JwtAuthenticateController@attachPermission');
+
+	Route::post('categories', 'v1\CategoriesController@store');
+	Route::post('countries', 'v1\CountriesController@store');
+	Route::post('delivers', 'v1\DeliversController@store');
+	Route::post('discounts', 'v1\DiscountsController@store');
+	Route::post('plans', 'v1\PlansController@store');
+	Route::post('tags', 'v1\TagsController@store');
 });
