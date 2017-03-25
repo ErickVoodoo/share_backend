@@ -35,6 +35,10 @@ class Kernel extends HttpKernel
         'api' => [
             // 'simpleauth' => \App\Http\Middleware\Auth::class,
         ],
+
+        'cors' => [
+          \Barryvdh\Cors\HandleCors::class
+        ],
     ];
 
     /**

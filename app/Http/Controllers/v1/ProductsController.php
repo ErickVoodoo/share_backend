@@ -49,7 +49,7 @@ class ProductsController extends App_Controller
       'title' => $request->input('title'),
       'deliver_id' => $request->input('deliver_id'),
       'tags' => $request->input('tags'),
-      'country_id' => $request->input('country'),
+      'country_id' => $request->input('country_id'),
       'city' => $request->input('city'),
       'street' => $request->input('street'),
     );
@@ -78,13 +78,13 @@ class ProductsController extends App_Controller
 
     if ($where['tags']) {
       $products = $products->whereHas('tags', function($query) use ($request) {
-        $query->whereIn('name', $request->input('tags'));
+        $query->where('name', $request->input('tags'));
       });
     }
 
     if ($where['country_id']) {
       $products = $products->whereHas('user', function($query) use ($request) {
-        $query->whereIn('country_id', $request->input('country_id'));
+        $query->where('country_id', $request->input('country_id'));
       });
     }
 

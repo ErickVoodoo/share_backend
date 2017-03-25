@@ -42,13 +42,16 @@ Route::group(['prefix' => 'v1'], function() {
 	Route::get('locations', 'v1\LocationsController@index');
 	Route::get('locations/{id}', 'v1\LocationsController@show');
 
+	Route::get('cities', 'v1\LocationsController@cities');
+	Route::get('addresses', 'v1\LocationsController@addresses');
+
 	Route::post('login', 'v1\JwtAuthenticateController@login');
 	Route::post('registration', 'v1\JwtAuthenticateController@registration');
 	Route::post('reset', 'v1\JwtAuthenticateController@reset');
 	Route::post('forgot', 'v1\JwtAuthenticateController@forgot');
 });
 
-Route::group(['prefix' => 'v1', 'middleware' => ['jwt.auth']], function() {
+Route::group(['prefix' => 'v1',], function() {
 	// надо токен для каких то действий
 	Route::post('images', 'v1\ImagesController@store');
 	Route::post('locations', 'v1\LocationsController@store');

@@ -58,11 +58,12 @@ class ImagesController extends App_Controller
             }
 
             $image_creator
-              ->save($destination_path . '/' .$uuid . '.' . $size . 'x' . $size . '.' . $extension);
+              ->save($destination_path . '/' .$uuid . '.' . $size . 'x' . $size . '.jpg');
           }
 
           $image = Image::create([
             'id' => $uuid,
+            'product_id' => 'eee8e285-9493-4dd8-ba00-2baaed931633',
           ]);
 
           return Response::json([

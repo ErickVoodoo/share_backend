@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers\v1;
 use App\Location;
+use App\Product;
 use Illuminate\Http\Request;
+use League\Fractal;
 use Ramsey\Uuid\Uuid;
 use Response;
 use JWTAuth;
@@ -55,5 +57,69 @@ class LocationsController extends App_Controller
         'location' => $location,
       ],
     ], 200, [], JSON_UNESCAPED_UNICODE);
+  }
+
+  public function cities(Request $request)
+  {
+    $country_id = $request->input('country_id');
+
+    $products = new Product();
+
+    if ($country_id) {
+      $products = $products->whereHas('user', function($query) use ($request) {
+        $query->where('country_id', $request->input('country_id'));
+      });
+    }
+
+    $products = $products->with('location')->get()->toArray();
+
+    $cities = array_map(array($this, 'transformCity'), $products);
+
+    return Response::json([
+      'response' => [
+        'cities' => array_unique($cities),
+      ],
+    ], 200, [], JSON_UNESCAPED_UNICODE);
+  }
+
+  public function addresses(Request $request)
+  {
+    $country = $request->input('country_id');
+    $city = $request->input('city');
+    $products = new Product();
+
+    if ($country) {
+      $products = $products->whereHas('user', function($query) use ($request) {
+        $query->where('country_id', $request->input('country_id'));
+      });
+    }
+
+    $not_filtered_cities = $products->with('location')->get()->toArray();
+
+    if ($city) {
+      $products = $products->whereHas('location', function($query) use ($request) {
+        $query->where('city', $request->input('city'));
+      });
+    }
+
+    $products = $products->with('location')->get()->toArray();
+
+    $cities = array_map(array($this, 'transformCity'), $not_filtered_cities);
+    $streets = array_map(array($this, 'transformStreet'), $products);
+
+    return Response::json([
+      'response' => [
+        'cities' => array_unique($cities) ,
+        'streets' => $streets ? array_unique($streets) : [],
+      ],
+    ], 200, [], JSON_UNESCAPED_UNICODE);
+  }
+
+  function transformCity($value) {
+    return $value['location']['city'];
+  }
+
+  function transformStreet($value) {
+    return $value['location']['street'];
   }
 }
